@@ -7,7 +7,7 @@ import { db } from '../db/db.js'
 
 const verifyJwt = async(req, res, next)=>{
     try {
-        const userToken = req.cookies?.accessToken ||
+        const userToken = req.cookies?.jwt ||
   req.header("Authorization")?.replace("Bearer ", "")
 
         if(!userToken){

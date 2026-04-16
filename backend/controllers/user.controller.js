@@ -66,9 +66,19 @@ const registerUser = asyncHandler(async(req, res)=>{
     const [createdUser] = await db.query("SELECT id, email, username, profile_pic, is_online, created_at FROM users WHERE id=?", [userId])
     console.log("created user",createdUser)
 
+    const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(userId)
+
+    res.cookie("jwt", accessToken, {
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV !== "development",
+    })
+
     return res.status(201).json(new ApiResponse(
-        200, createdUser, "User registered successfully"
+        200, createdUser[0], "User registered successfully"
     ))
+    
     
    } catch (error) {
     res.status(error.statusCode || 500).json(
@@ -91,30 +101,32 @@ const loginUser = asyncHandler(async(req, res)=>{
        
        const user = rows[0]
 
-       if(user.length === 0){
-        throw new ApiError(404, "Credentials not true")
-       }
-     
-       const isPasswordCorrect = await bcrypt.compare(password, user.password)
-       
-       
-       if(!isPasswordCorrect){
-           throw new ApiError(404, "Credentials not true")
+        if (rows.length === 0) {
+            throw new ApiError(404, "Invalid credentials")
         }
+
+        const isPasswordCorrect = await bcrypt.compare(password, user.password)
+
+        if (!isPasswordCorrect) {
+            throw new ApiError(401, "Invalid credentials")
+        }
+
         const userId = user.id
-        if(isPasswordCorrect){
-  
-            const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(userId)
+        const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(userId)
 
-            console.log("Access token", accessToken)
-            console.log("Reresh token", refreshToken)
+        res.cookie("jwt", accessToken, {
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV !== "development",
+        })
 
-            const [loggedInUserRow] = await db.query("SELECT * FROM users WHERE id = ?", [userId])
-            const loggedInUser = loggedInUserRow[0]
-            return res.status(201).json(new ApiResponse(
+        const [loggedInUserRow] = await db.query("SELECT id, username, email, profile_pic, created_at FROM users WHERE id = ?", [userId])
+        const loggedInUser = loggedInUserRow[0]
+        return res.status(200).json(new ApiResponse(
             200, loggedInUser, `Welcome back ${loggedInUser.username}`
         ))
-        }
+        
     
 
     
@@ -158,13 +170,30 @@ const updateUser = asyncHandler(async(req, res)=>{
 })
 
 
- const logout = (_, res)=>{
+const logout = (_, res)=>{
     res.cookie("jwt", "", {maxAge:0})
     res.status(200).json({
         message:"logout successfully"
     })
 }
 
+const checkAuth = asyncHandler(async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      "SELECT id, email, username, profile_pic, is_online, created_at FROM users WHERE id = ?",
+      [req.user.id]
+    );
+    const user = rows[0];
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+    res.status(200).json(new ApiResponse(200, user, "Authenticated"));
+  } catch (error) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
 
-
-export{registerUser, loginUser, updateUser, logout}
+export { registerUser, loginUser, updateUser, logout, checkAuth }

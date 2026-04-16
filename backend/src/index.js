@@ -1,39 +1,43 @@
-import express from "express"
-import dotenv from 'dotenv'
-dotenv.config()
-import { db } from "../db/db.js"
-import { userRouter } from "../routes/user.route.js"
-import cookieParser from "cookie-parser"
-import { messageRouter } from "../routes/message.route.js"
-import { conversationRouter } from "../routes/conversation.route.js"
+import express from "express";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import { db } from "../db/db.js";
+import { userRouter } from "../routes/user.route.js";
+import { messageRouter } from "../routes/message.route.js";
+import { conversationRouter } from "../routes/conversation.route.js";
+import { app, server } from "../lib/socket.js";
 
-const app = express()
+dotenv.config();
 
-
-app.use(express.json())
-app.use(cookieParser())
+// Middlewares
+app.use(express.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+    credentials: true,
+  })
+);
 
 async function connectDB() {
   try {
-    const connection = await db.getConnection()
-    console.log("Database connected successfully")
-    connection.release()
+    const connection = await db.getConnection();
+    console.log("Database connected successfully");
+    connection.release();
   } catch (err) {
-    console.error("Database connection failed:", err)
+    console.error("Database connection failed:", err);
   }
 }
-connectDB()
+connectDB();
 
-app.listen(process.env.PORT, (req, res)=>{
-    console.log(`app is listen on port ${process.env.PORT}`)
-})
+// Routes
+app.use("/api/u", userRouter);
+app.use("/api/c", conversationRouter);
+app.use("/api/m", messageRouter);
 
-
-//user route
-app.use('/api/u', userRouter)
-
-//conversation route
-app.use('/api/c', conversationRouter)
-
-//message routes
-app.use('/api/m', messageRouter)
+// Use server.listen for Socket.io
+const PORT = process.env.PORT || 5001;
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

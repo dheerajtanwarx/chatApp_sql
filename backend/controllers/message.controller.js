@@ -57,47 +57,56 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
         console.log("conversation id: ", conversationId)
 
-        const [result] = await db.query("INSERT into messages (conversation_id, sender_id, message_text) VALUES(?,?,?)", [conversationId, senderId, message_text])
+        const [insertResult] = await db.query("INSERT into messages (conversation_id, sender_id, message_text) VALUES(?,?,?)", [conversationId, senderId, message_text])
+        const messageId = insertResult.insertId
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("result", result);
-    }
+        const [newMessageRow] = await db.query("SELECT * FROM messages WHERE id = ?", [messageId])
+        const newMessage = newMessageRow[0]
+
+        const receiverSocketId = getReceiverSocketId(receiverId);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("newMessage", newMessage);
+        }
 
         return res.status(200).json(
-            new ApiResponse(200, result, "message sent successfuly")
+            new ApiResponse(200, newMessage, "message sent successfully")
         )
-
-
     } catch (error) {
         console.log("message sent error:", error.message)
         res.status(500).json({ error: "Internal Server Error" })
     }
-
-
 })
+
 
 export const getMessagesByConversationId = asyncHandler(async (req, res) => {
     try {
-        const { id: conversation_id } = req.params
+        const { id: otherUserId } = req.params
+        const senderId = req.user.id
 
-        const [rows] = await db.query("SELECT * FROM messages WHERE conversation_id = ?", [conversation_id])
+        const [conversation] = await db.query(
+            "SELECT id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", 
+            [senderId, otherUserId, otherUserId, senderId]
+        )
 
-        const result = rows[0]
-        if (!result) {
-            return res.status(400).json(
-                new ApiResponse(400, "conversation does not exist")
-            )
-        } else {
+        if (conversation.length === 0) {
             return res.status(200).json(
-                new ApiResponse(200, result, "messages successfully fetched")
+                new ApiResponse(200, [], "No messages yet")
             )
         }
+
+        const conversationId = conversation[0].id
+
+        const [rows] = await db.query("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC", [conversationId])
+
+        return res.status(200).json(
+            new ApiResponse(200, rows, "messages successfully fetched")
+        )
     } catch (error) {
         console.log("message fetching error:", error.message)
         res.status(500).json({ error: "Internal Server Error" })
     }
 })
+
 
 //
 export const getUserConversations = asyncHandler(async (req, res) => {
