@@ -40,7 +40,8 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 
 const registerUser = asyncHandler(async(req, res)=>{
    try {
-
+       
+    console.log("sign up route hit")
        const { email , password, username, profile_pic} = req.body
        console.log(req.body)
 //empty field check
@@ -91,13 +92,13 @@ const registerUser = asyncHandler(async(req, res)=>{
 
 const loginUser = asyncHandler(async(req, res)=>{
     try {
-        const {email, username,  password} = req.body
+        const {email,   password} = req.body
     
-        if (!username || !email || !password) {
+        if ( !email || !password) {
           throw new ApiError(400, "username, email and password are required")
         }
     
-       const [rows] = await db.query("SELECT * FROM users WHERE email=? OR username=?", [email, username])
+       const [rows] = await db.query("SELECT * FROM users WHERE email=? ", [email])
        
        const user = rows[0]
 

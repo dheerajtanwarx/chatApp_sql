@@ -48,7 +48,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
             "SELECT id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", [senderId, receiverId, receiverId, senderId]
         )
         let conversationId
-        if (conversation > 0) {
+        if (conversation.length > 0) {
             conversationId = conversation[0].id
         } else {
             const [data] = await db.query("INSERT INTO conversations (user1_id, user2_id) VALUES(?,?)", [receiverId, senderId])
@@ -84,19 +84,39 @@ export const getMessagesByConversationId = asyncHandler(async (req, res) => {
         const senderId = req.user.id
 
         const [conversation] = await db.query(
-            "SELECT id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", 
-            [senderId, otherUserId, otherUserId, senderId]
+            // "SELECT id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", 
+            "SELECT * FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?) ",
+            [otherUserId, senderId, senderId, otherUserId]
+            // [senderId, otherUserId, otherUserId, senderId]
+
         )
 
+        console.log("conversation:", conversation)
         if (conversation.length === 0) {
             return res.status(200).json(
                 new ApiResponse(200, [], "No messages yet")
             )
         }
 
+
         const conversationId = conversation[0].id
 
         const [rows] = await db.query("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC", [conversationId])
+
+//         const [rows] = await db.query(
+//   `SELECT 
+//       m.id,
+//       m.conversation_id,
+//       m.sender_id,
+//       u.username AS sender_username,
+//       m.message_text,
+//       m.created_at
+//    FROM messages m
+//    JOIN users u ON m.sender_id = u.id
+//    WHERE m.conversation_id = ?
+//    ORDER BY m.created_at ASC`,
+//   [conversationId]
+// )
 
         return res.status(200).json(
             new ApiResponse(200, rows, "messages successfully fetched")

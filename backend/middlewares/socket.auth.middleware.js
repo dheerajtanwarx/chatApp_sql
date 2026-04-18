@@ -32,11 +32,13 @@ export const socketAuthMiddleware = async (socket, next) => {
     //   return next(new Error("User not found"));
     // }
 
-    const [user] = await db.query("SELECT * FROM users where  id = ?", [decoded.id])
+    const [rows] = await db.query("SELECT * FROM users where  id = ?", [decoded.id])
+
+    const user = rows[0]
 
     // attach user info to socket
     socket.user = user;
-    socket.id = user.id.toString();
+    socket.id = user.id;
 
     console.log(`Socket authenticated for user: ${user.username} (${user.id})`);
 

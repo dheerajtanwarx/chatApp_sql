@@ -1,0 +1,137 @@
+
+import { axiosInstance } from "../lib/axios"
+import toast from 'react-hot-toast'
+import { create } from "zustand";
+import { io } from "socket.io-client";
+
+const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:4000" : "/"
+
+export const useAuthStore = create((set, get) => ({
+    //currently logged in user
+    authUser: null,
+    //loading state while checking auth
+    isCheckingAuth: true,
+    //loading state for signup
+    isSigningUp: false,
+    //loading state for signin
+    isSigningIn: false,
+
+    isLoggingOut: false,
+    //socket instance for real-time communication
+    socket: null,
+
+    //list of currently online user 
+    onlineUsers: [],
+
+    //check if user is logged in on page reload
+    checkAuth: async () => {
+        try {
+            const res = await axiosInstance.get('/u/check')
+            set({ authUser: res.data })
+
+            get().connectSocket()
+        } catch (error) {
+            console.log("Error in authCheck: ", error)
+            set({ isCheckingAuth: false })
+        } finally {
+            set({ isCheckingAuth: false })
+        }
+    },
+
+    //register new user
+    signup: async (data) => {
+        set({ isSigningUp: true })
+        try {
+            const res = await axiosInstance.post('/u/register'
+                , data)
+            set({ authUser: res.data })
+
+            toast.success("Account created successfully")
+
+            get().connectSocket()
+        } catch (error) {
+            toast.error(error.response.data.message)
+        } finally {
+            set({ isSigningUp: false })
+        }
+    },
+
+    //login user
+    login: async (data) => {
+        set({ isSigningIn: true })
+        try {
+            const res = await axiosInstance.post('/u/login', data)
+
+            set({ authUser: res.data })
+
+            toast.success("Account login successfully! ")
+            get().connectSocket();
+        } catch (error) {
+            toast.error(error.response.data.message)
+        } finally {
+            set({ isSigningIn: false })
+        }
+    },
+
+    logout: async (data) => {
+        set({ isLoggingOut: false })
+
+        try {
+            const res = await axiosInstance.post('/u/logout'
+            )
+
+            set({ authUser: null })
+
+            toast.success(" Logged Out successfully")
+
+            get().disconnectSocket();
+        } catch (error) {
+            toast.error("Error in Logging Out")
+            console.log("Logout Error", error)
+        }
+    },
+
+    //update user details
+    updateUserDetails: async (data) => {
+        try {
+            const res = await axiosInstance.put(`/u/update/${data.userId}`, data)
+
+            set({ authUser: res.data })
+
+            toast.success("Image is updated successfully ")
+        } catch (error) {
+
+        }
+    },
+
+    //establish socket connection after login/ signup
+    connectSocket: () => {
+        const { authUser } = get();  // Zustand store se current logged-in user le rahe ho
+
+        if (!authUser || get().socket?.connected) return;  //❌ connect mat karo agar: user login nahi hai,ya socket already connected hai
+
+        //“server se connection bana lo”
+        const socket = io(BASE_URL, {
+            withCredentials: true,
+        })
+
+        socket.connect() //👉 connection start karta hai
+
+
+        set({ socket })
+
+        //listen for online users event
+        socket.on("getOnlineUsers", (userIds) => {
+            set({ onlineUsers: userIds })
+        })
+    },
+
+    //disconnect socket on logout
+    disconnectSocket: () => {
+        if (get().socket?.connected) get().socket.disconnect();
+    },
+
+
+
+
+}))
