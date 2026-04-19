@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import cloudinary from "../lib/cloudinary.js";
+import { removeLocalFileAsync } from "../middlewares/multer.middleware.js";
 
 export const getAllContacts = asyncHandler(async (req, res) => {
     try {
@@ -26,6 +27,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
     try {
         const { message_text } = req.body;
         const file = req.file
+        console.log("file url",req.file)
        console.log("RAW BODY:", req.body);
         const { id: receiverId } = req.params
         console.log("reciver id", receiverId)
@@ -34,9 +36,9 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
         let fileUrl = null
         let messageType = "text"
-
+         let uploadResponse=null
         if(file){
-            const uploadResponse = await cloudinary.uploader.upload(file.path,{
+             uploadResponse = await cloudinary.uploader.upload(file.path,{
                 resource_type:"auto"
             })
             fileUrl = uploadResponse.secure_url
@@ -50,8 +52,14 @@ export const sendMessage = asyncHandler(async (req, res) => {
             } else if (file.mimetype.startsWith("audio")) {
                 messageType = "audio"
             }
+
+
+        }
+        if (uploadResponse && file?.path) {
+          await removeLocalFileAsync(file.path);
         }
         
+        console.log("uploaded image on cloudinary: ", fileUrl)
         if (!message_text && !fileUrl) {
             return res.status(400).json({ message: "Text or File is required" })
         }
@@ -79,7 +87,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
         
         console.log("conversation id: ", conversationId)
         
-        const [insertResult] = await db.query("INSERT into messages (conversation_id, sender_id, message_text, message_type, file_Url) VALUES(?,?,?,?,?)", [conversationId, senderId, message_text, messageType, fileUrl])
+        const [insertResult] = await db.query("INSERT into messages (conversation_id, sender_id, message_text, message_type, file_url) VALUES(?,?,?,?,?)", [conversationId, senderId, message_text, messageType, fileUrl])
         const messageId = insertResult.insertId
         
         const [newMessageRow] = await db.query("SELECT * FROM messages WHERE id = ?", [messageId])
@@ -130,6 +138,8 @@ export const getMessagesByConversationId = asyncHandler(async (req, res) => {
                 conversation_id,
                 sender_id,
                 message_text,
+                message_type,
+                file_url,
                 created_at AS createdAt
              FROM messages 
              WHERE conversation_id = ? 

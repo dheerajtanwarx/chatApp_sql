@@ -49,32 +49,37 @@ if (!authUser) return null; // jab tak login user nahi aata → kuch render mat 
       <div className="flex-1 px-6 overflow-y-auto py-8">
         {messages.length > 0 && !isMessagesLoading ? (
           <div className="max-w-3xl mx-auto space-y-6">
-            {messages.map((msg) => {(
-
+            {messages.map((msg) => {
+              console.log("MSG DEBUG:", msg);
+              const messageType = msg.message_type || msg.messageType;
+              const fileUrl = msg.file_url || msg.fileUrl;
+              const createdTime = msg.created_at || msg.createdAt;
+              const senderId = msg.sender_id ?? msg.senderId;
+              return (
               <div
                 key={msg.id}
-                className={`chat ${Number(msg.sender_id ?? msg.senderId) === Number(authUser?.id) ? "chat-end" : "chat-start"}`}
+                className={`chat ${Number(senderId) === Number(authUser?.id) ? "chat-end" : "chat-start"}`}
               >
                 <div
                   className={`chat-bubble relative ${
-                    Number(msg.sender_id ?? msg.senderId) === Number(authUser?.id)
+                    Number(senderId) === Number(authUser?.id)
                       ? "bg-cyan-600 text-white"
                       : "bg-slate-800 text-slate-200"
                   }`}
                 >
-                  {/* Image */}
-                  {msg.message_type === "image" && msg.file_url && (
+                  {/* Image (fallback if type missing but URL exists) */}
+                  {fileUrl && (messageType === "image" || fileUrl.match(/\.(jpeg|jpg|png|webp|gif)$/i)) && (
                     <img
-                      src={msg.file_url}
+                      src={fileUrl}
                       alt="Shared"
                       className="rounded-lg max-w-[200px] object-cover"
                     />
                   )}
 
                   {/* Document */}
-                  {msg.message_type === "document" && msg.file_url && (
+                  {messageType === "document" && fileUrl && (
                     <a
-                      href={msg.file_url}
+                      href={fileUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="text-blue-400 underline"
@@ -88,14 +93,15 @@ if (!authUser) return null; // jab tak login user nahi aata → kuch render mat 
                     <p className="mt-2">{msg.message_text ?? msg.text}</p>
                   )}
                   <p className="text-xs mt-1 opacity-75 flex items-center gap-1">
-                    {new Date(msg.createdAt).toLocaleTimeString(undefined, {
+                    {new Date(createdTime).toLocaleTimeString(undefined, {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </p>
                 </div>
               </div>
-            )})}
+              );
+            })}
             {/* 👇 scroll target */}
             <div ref={messageEndRef} />
           </div>
