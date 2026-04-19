@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
+import cloudinary from "../lib/cloudinary.js";
 
 export const getAllContacts = asyncHandler(async (req, res) => {
     try {
@@ -23,27 +24,48 @@ export const getAllContacts = asyncHandler(async (req, res) => {
 
 export const sendMessage = asyncHandler(async (req, res) => {
     try {
-        const { message_text } = req.body
-        // console.log(text)
+        const { message_text } = req.body;
+        const file = req.file
+       console.log("RAW BODY:", req.body);
         const { id: receiverId } = req.params
         console.log("reciver id", receiverId)
         const senderId = req.user.id
         // console.log("SEnder id",senderId)
 
-        if (!message_text) {
-            return res.status(400).json({ message: "Text or image is required" })
-        }
+        let fileUrl = null
+        let messageType = "text"
 
+        if(file){
+            const uploadResponse = await cloudinary.uploader.upload(file.path,{
+                resource_type:"auto"
+            })
+            fileUrl = uploadResponse.secure_url
+            // 🔥 type detect karo
+            if (file.mimetype.startsWith("image")) {
+                messageType = "image"
+            } else if (file.mimetype === "application/pdf") {
+                messageType = "document"
+            } else if (file.mimetype.startsWith("video")) {
+                messageType = "video"
+            } else if (file.mimetype.startsWith("audio")) {
+                messageType = "audio"
+            }
+        }
+        
+        if (!message_text && !fileUrl) {
+            return res.status(400).json({ message: "Text or File is required" })
+        }
+        
         if (senderId === receiverId) {
             return res.status(400).json({ message: "cannot send message to yourself" })
         }
-
+        
         const [receiverExist] = await db.query("SELECT * FROM users WHERE id = ?", [receiverId])
-
+        
         if (!receiverExist) {
             return res.status(400).json({ message: "Reciever not found" })
         }
-
+        
         const [conversation] = await db.query(
             "SELECT id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", [senderId, receiverId, receiverId, senderId]
         )
@@ -54,23 +76,24 @@ export const sendMessage = asyncHandler(async (req, res) => {
             const [data] = await db.query("INSERT INTO conversations (user1_id, user2_id) VALUES(?,?)", [receiverId, senderId])
             conversationId = data.insertId
         }
-
+        
         console.log("conversation id: ", conversationId)
-
-        const [insertResult] = await db.query("INSERT into messages (conversation_id, sender_id, message_text) VALUES(?,?,?)", [conversationId, senderId, message_text])
+        
+        const [insertResult] = await db.query("INSERT into messages (conversation_id, sender_id, message_text, message_type, file_Url) VALUES(?,?,?,?,?)", [conversationId, senderId, message_text, messageType, fileUrl])
         const messageId = insertResult.insertId
-
+        
         const [newMessageRow] = await db.query("SELECT * FROM messages WHERE id = ?", [messageId])
         const newMessage = newMessageRow[0]
-
+        
         const receiverSocketId = getReceiverSocketId(receiverId);
         if (receiverSocketId) {
-            io.to(receiverSocketId).emit("newMessage", newMessage);
+            io.to(receiverSocketId).emit("newMessage", newMessage); //matlab "Receiver ko message bhej do 📩"
         }
-
+        
         return res.status(200).json(
             new ApiResponse(200, newMessage, "message sent successfully")
         )
+    
     } catch (error) {
         console.log("message sent error:", error.message)
         res.status(500).json({ error: "Internal Server Error" })
@@ -101,7 +124,18 @@ export const getMessagesByConversationId = asyncHandler(async (req, res) => {
 
         const conversationId = conversation[0].id
 
-        const [rows] = await db.query("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC", [conversationId])
+        const [rows] = await db.query(
+            `SELECT 
+                id,
+                conversation_id,
+                sender_id,
+                message_text,
+                created_at AS createdAt
+             FROM messages 
+             WHERE conversation_id = ? 
+             ORDER BY created_at ASC`,
+            [conversationId]
+        )
 
 //         const [rows] = await db.query(
 //   `SELECT 
@@ -179,6 +213,3 @@ export const getUserConversations = asyncHandler(async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" })
     }
 })
-
-
-

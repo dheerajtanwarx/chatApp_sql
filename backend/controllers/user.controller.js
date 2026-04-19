@@ -8,6 +8,7 @@ import { generateRefreshToken } from "../utils/generateRefreshToken.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
 
 import { ApiResponse } from "../utils/ApiResponse.js"
+import cloudinary from "../lib/cloudinary.js"
 dotenv.config()
 
 const generateAccessTokenAndRefreshToken = async (userId) => {
@@ -144,11 +145,34 @@ const loginUser = asyncHandler(async(req, res)=>{
 const updateUser = asyncHandler(async(req, res)=>{
   try {
   const { email, username } = req.body
-  const { userId } = req.params
+  const profile_pic = req.file?.path
+  const  userId  = req.user.id
+
+  console.log("profile pic", profile_pic)
+
+    // if(!profile_pic){
+    //   return res.status(400).json({message:"Profile pic is required"})
+    // }
+
+    let imageUrl = null
+
+    if(profile_pic){
+     try {
+  const uploadResponse = await cloudinary.uploader.upload(profile_pic)
+  console.log("Cloudinary success:", uploadResponse)
+  imageUrl = uploadResponse.secure_url
+} catch (err) {
+  console.log("Cloudinary error:", err)
+}
+    }
+
+    
+
+    console.log("Upload res: ", imageUrl)
 
   await db.query(
-    "UPDATE users SET email = ?, username = ? WHERE id = ?",
-    [email, username, userId]
+    "UPDATE users SET email = ?, username = ?, profile_pic = ? WHERE id = ?",
+    [email, username, imageUrl, userId]
   )
 
   const [rows] = await db.query(
@@ -157,6 +181,8 @@ const updateUser = asyncHandler(async(req, res)=>{
   )
 
   const updatedUser = rows[0]
+
+  console.log("Updated user:", updatedUser)
 
   res.status(200).json(
     new ApiResponse(200, updatedUser, "user updated successfully")
@@ -197,4 +223,26 @@ const checkAuth = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, updateUser, logout, checkAuth }
+// const updateProfile = asyncHandler(async(req, res)=>{
+//   try {
+//     const profile_pic = req.file?.path
+//     console.log(profile_pic)
+
+//     if(!profile_pic){
+//       return res.status(400).json({message:"Profile pic is required"})
+//     }
+
+//     const userId = req.user.id
+
+//     const uploadResponse = await cloudinary.uploader.upload(profile_pic)
+
+//     const [updatedUser] = await db.query("UPDATE users SET profile_pic = ? WHERE id=? VALUES(?, ?)", [uploadResponse, userId])
+
+//     res.status(200).json(updatedUser)
+//   } catch (error) {
+//     console.log("Error in update profile",error)
+//         res.status(500).json({message:"internal server error"}) 
+//   }
+// })
+
+export { registerUser, loginUser, updateUser, logout, checkAuth}

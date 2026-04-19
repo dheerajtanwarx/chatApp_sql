@@ -4,9 +4,14 @@ import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import NoChatHistoryPlaceholder from "./NoChatHistoryPlaceholder.jsx";
 import MessageInput from "./MessageInput";
-import MessagesLoadingSkeleton from "./MessagesLoadingSkeleton";
+
+import MessageLoadingSkeleton from "./MessageLoadingSkeleton.jsx";
 
 function ChatContainer() {
+
+//   selectedUser = jisse chat karni hai (Vinay)
+// authUser = tum (Dheeraj)
+// messages = abhi empty []
   const {
     selectedUser,
     getMessagesByUserId,
@@ -18,43 +23,70 @@ function ChatContainer() {
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
 
-  useEffect(() => {
-    getMessagesByUserId(selectedUser.id);
-    subscribeToMessages();
+if (!authUser) return null; // jab tak login user nahi aata → kuch render mat karo
 
+  useEffect(() => {
     if (!selectedUser) return;
-    // clean up
+
+    getMessagesByUserId(selectedUser.id); //Tumne Vinay pe click kiya toh selectedUser = { id: 6, username: "Vinay" }
+    subscribeToMessages(); //👉 ab app live messages sun raha hai 📡
+
     return () => unsubscribeFromMessages();
   }, [selectedUser, getMessagesByUserId, subscribeToMessages, unsubscribeFromMessages]);
 
   useEffect(() => {
+    //ye hai auto scroll ke liye ki new message aate hi auto scroll krdo
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
-
+  console.log("authUser:", authUser);
+// console.log("msg sender:", msg.sender_id, msg.senderId);
   return (
     <>
+    
       <ChatHeader />
       <div className="flex-1 px-6 overflow-y-auto py-8">
         {messages.length > 0 && !isMessagesLoading ? (
           <div className="max-w-3xl mx-auto space-y-6">
-            {messages.map((msg) => (
+            {messages.map((msg) => {(
+
               <div
                 key={msg.id}
-                className={`chat ${msg.senderId === authUser.id ? "chat-end" : "chat-start"}`}
+                className={`chat ${Number(msg.sender_id ?? msg.senderId) === Number(authUser?.id) ? "chat-end" : "chat-start"}`}
               >
                 <div
                   className={`chat-bubble relative ${
-                    msg.senderId === authUser._id
+                    Number(msg.sender_id ?? msg.senderId) === Number(authUser?.id)
                       ? "bg-cyan-600 text-white"
                       : "bg-slate-800 text-slate-200"
                   }`}
                 >
-                  {msg.image && (
-                    <img src={msg.image} alt="Shared" className="rounded-lg h-48 object-cover" />
+                  {/* Image */}
+                  {msg.message_type === "image" && msg.file_url && (
+                    <img
+                      src={msg.file_url}
+                      alt="Shared"
+                      className="rounded-lg max-w-[200px] object-cover"
+                    />
                   )}
-                  {msg.text && <p className="mt-2">{msg.text}</p>}
+
+                  {/* Document */}
+                  {msg.message_type === "document" && msg.file_url && (
+                    <a
+                      href={msg.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-400 underline"
+                    >
+                      Download File
+                    </a>
+                  )}
+
+                  {/* Text */}
+                  {(msg.message_text ?? msg.text) && (
+                    <p className="mt-2">{msg.message_text ?? msg.text}</p>
+                  )}
                   <p className="text-xs mt-1 opacity-75 flex items-center gap-1">
                     {new Date(msg.createdAt).toLocaleTimeString(undefined, {
                       hour: "2-digit",
@@ -63,14 +95,14 @@ function ChatContainer() {
                   </p>
                 </div>
               </div>
-            ))}
+            )})}
             {/* 👇 scroll target */}
             <div ref={messageEndRef} />
           </div>
         ) : isMessagesLoading ? (
-          <MessagesLoadingSkeleton />
+          <MessageLoadingSkeleton />
         ) : (
-          <NoChatHistoryPlaceholder name={selectedUser.fullName} />
+          <NoChatHistoryPlaceholder name={selectedUser.username} />
         )}
       </div>
 

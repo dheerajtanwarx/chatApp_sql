@@ -36,7 +36,7 @@ export const useChatStore = create((set, get)=>({
        try {
         const res = await axiosInstance.get('/m/getAllContacts')
 
-        set({allContacts:res.data})
+        set({allContacts:res.data.data})
        } catch (error) {
         toast.error(error.response.data.message)
        }finally{
@@ -50,7 +50,7 @@ export const useChatStore = create((set, get)=>({
 
         try {
             const res = await axiosInstance.get('/m/getConversations')
-            set({chats: res.data});
+            set({chats: res.data.data});
         } catch (error) {
             toast.error(error.response.data.message)
         }finally{
@@ -63,7 +63,7 @@ export const useChatStore = create((set, get)=>({
         set({isMessagesLoading: true})
         try {
             const res = await axiosInstance.get(`/m/${otherUserId}`);
-            set({messages: res.data})
+            set({messages: res.data.data})
         } catch (error) {
              toast.error(error.response?.data?.message || "Something went wrong");
         }finally {
@@ -73,29 +73,56 @@ export const useChatStore = create((set, get)=>({
 
     //send message with optimistic ui update
     sendMessage: async(messageData) =>{
-        const {selectedUser, messages} = get();
+        const { selectedUser } = get();
         const {authUser}=useAuthStore.getState()
 
         const tempId = `temp-${Date.now()}`
 
         const optimisticMessage = {
             id: tempId,
-            senderId: authUser.id,
-            receiverId: selectedUser.id,
-            text: messageData.text,
-          //image:  messageData.image
-          createdAt: new Date().toISOString(),
-          isOptimistic: true, //flag to identify optimistic messages
+            sender_id: authUser.id,
+            receiver_id: selectedUser.id,
+            message_text: messageData.message_text || "",
+            file_url: messageData.file ? URL.createObjectURL(messageData.file) : null,
+            message_type: messageData.file
+              ? messageData.file.type.startsWith("image")
+                ? "image"
+                : "document"
+              : "text",
+            createdAt: new Date().toISOString(),
+            isOptimistic: true,
         };
-        set({messages: [...messages, optimisticMessage]})
-
+        set((state) => ({
+        messages: [...state.messages, optimisticMessage],
+         }));
+        
+        console.log("sending data:", { messageData });
         try {
-            const res = await axiosInstance.post(`/m/send/${selectedUser.id}`, messageData)
+            // prepare form data for file + text
+            const formData = new FormData();
+            if (messageData.message_text) {
+              formData.append("message_text", messageData.message_text);
+            }
+            if (messageData.file) {
+              formData.append("file", messageData.file);
+            }
 
-            set({messages: messages.concat(res.data)});
+            const res = await axiosInstance.post(
+              `/m/send/${selectedUser.id}`,
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              }
+            );
+
+            // do nothing here, socket will handle real message
         } catch (error) {
             //remove optimistic message on failure
-            set({messages: messages});
+            set((state) => ({
+              messages: state.messages.filter((msg) => msg.id !== tempId),
+            }));
             toast.error(error.response?.data?.message || "Something went wrong")
         }
     },
@@ -107,16 +134,22 @@ export const useChatStore = create((set, get)=>({
 
         const socket = useAuthStore.getState().socket;
 
-        socket.on("newMessage", (newMessage)=>{
-            const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser.id;
+        socket.on("newMessage", (newMessage) => {
+          const { selectedUser } = get();
+          if (!selectedUser) return;
 
-            if(!isMessageSentFromSelectedUser) return;
+          //check kro "Ye message isi chat ka hai kya?"
+          const isRelevant =
+            newMessage.sender_id === selectedUser.id ||
+            newMessage.receiver_id === selectedUser.id;
 
-            //Store se existing messages
-            const currentMessages = get().messages; 
-             //UI update → new message show
-            set({messages: [...currentMessages, newMessage]})
-        })
+          if (!isRelevant) return;
+
+          //agar isi chat ka h to new message chat me set kr do
+          set((state) => ({
+            messages: [...state.messages, newMessage],
+          }));
+        });
     },
 
 
