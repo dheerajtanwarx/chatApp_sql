@@ -9,6 +9,11 @@ function MessageInput() {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [file, setFile] = useState(null);
+ 
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioPreview, setAudioPreview] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -16,7 +21,7 @@ function MessageInput() {
 
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (!text.trim() && !imagePreview) return;
+    if (!text.trim() && !imagePreview && !audioPreview) return;
     
 
     sendMessage({
@@ -26,6 +31,7 @@ function MessageInput() {
     setText("");
     setImagePreview(null);
     setFile(null);
+    setAudioPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -48,6 +54,52 @@ function MessageInput() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  //start recording
+  const startRecording = async () => {
+    if (mediaRecorder) return; // prevent double recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const recorder = new MediaRecorder(stream);
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+
+      let chunks = [];
+
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        const file = new File([audioBlob], "audio.webm");
+
+        const url = URL.createObjectURL(audioBlob);
+        setAudioPreview(url);
+
+        sendMessage({ file });
+
+        // stop mic
+        stream.getTracks().forEach((track) => track.stop());
+
+        setAudioChunks([]);
+        setMediaRecorder(null);
+        setIsRecording(false);
+      };
+
+      recorder.start();
+    } catch (err) {
+      toast.error("Mic permission denied");
+    }
+  };
+
+  //stop recording
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+    }
+  };
+
   return (
     <div className="p-4 border-t border-slate-700/50">
       {imagePreview && (
@@ -66,6 +118,15 @@ function MessageInput() {
               <XIcon className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      )}
+
+      {isRecording && (
+        <div className="max-w-3xl mx-auto mb-2 text-red-500">Recording...</div>
+      )}
+      {audioPreview && (
+        <div className="max-w-3xl mx-auto mb-2">
+          <audio controls src={audioPreview}></audio>
         </div>
       )}
 
@@ -98,9 +159,13 @@ function MessageInput() {
         >
           <ImageIcon className="w-5 h-5" />
         </button>
+
+       <button type="button" onClick={startRecording}>🎤 Start</button>
+      <button type="button" onClick={stopRecording}>⏹ Stop</button>
+
         <button
           type="submit"
-          disabled={!text.trim() && !imagePreview}
+          disabled={isRecording || (!text.trim() && !imagePreview && !audioPreview)}
           className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg px-4 py-2 font-medium hover:from-cyan-600 hover:to-cyan-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <SendIcon className="w-5 h-5" />

@@ -15,6 +15,8 @@ export const useAuthStore = create((set, get) => ({
     isSigningUp: false,
     //loading state for signin
     isSigningIn: false,
+    //loading state for updating
+    isUpdating: false,
 
     isLoggingOut: false,
     //socket instance for real-time communication
@@ -44,13 +46,13 @@ export const useAuthStore = create((set, get) => ({
         try {
             const res = await axiosInstance.post('/u/register'
                 , data)
-            set({ authUser: res.data })
+            set({ authUser: res.data.data })
 
             toast.success("Account created successfully")
 
             get().connectSocket()
         } catch (error) {
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Something went wrong")
         } finally {
             set({ isSigningUp: false })
         }
@@ -62,12 +64,12 @@ export const useAuthStore = create((set, get) => ({
         try {
             const res = await axiosInstance.post('/u/login', data)
 
-            set({ authUser: res.data })
+            set({ authUser: res.data.data })
 
             toast.success("Account login successfully! ")
             get().connectSocket();
         } catch (error) {
-            toast.error(error.response.data.message)
+            toast.error(error.response?.data?.message || "Something went wrong")
         } finally {
             set({ isSigningIn: false })
         }
@@ -91,16 +93,21 @@ export const useAuthStore = create((set, get) => ({
         }
     },
 
-    //update user details
-    updateUserDetails: async (data) => {
+    updateProfile: async (data) => {
+        set({ isUpdating: true })
         try {
-            const res = await axiosInstance.put(`/u/update/${data.userId}`, data)
+            console.log("API call sending...");
+            const res = await axiosInstance.put(`/u/update`, data)
 
-            set({ authUser: res.data })
+            console.log("Response:", res.data);
 
-            toast.success("Image is updated successfully ")
+            set({ authUser: res.data.data })
+
+            toast.success("Profile details updated successfully")
         } catch (error) {
-
+            toast.error(error.response?.data?.message || "Something went wrong")
+        } finally {
+            set({ isUpdating: false })
         }
     },
 

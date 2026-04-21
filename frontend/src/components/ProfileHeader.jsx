@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { LogOutIcon } from "lucide-react";
+import { LogOutIcon, UserIcon } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 
 function ProfileHeader() {
@@ -29,7 +29,7 @@ function ProfileHeader() {
               //onClick={() => fileInputRef.current.click()}
             >
               <img
-                src={selectedImg || authUser.profilePic || "/avatar.png"}
+                src={selectedImg || authUser?.profile_pic || "/avatar.png"}
                 alt="User image"
                 className="size-full object-cover"
               />
@@ -59,6 +59,14 @@ function ProfileHeader() {
 
         {/* BUTTONS */}
         <div className="flex gap-4 items-center">
+          {/* UPDATE PROFILE BTN */}
+          <button
+            className="text-slate-400 hover:text-slate-200 transition-colors"
+            onClick={() => (window.location.href = "/updateProfile")}
+          >
+            <UserIcon className="size-5" />
+          </button>
+
           {/* LOGOUT BTN */}
           <button
             className="text-slate-400 hover:text-slate-200 transition-colors"
@@ -66,8 +74,6 @@ function ProfileHeader() {
           >
             <LogOutIcon className="size-5" />
           </button>
-
-          
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
-
 import { Navigate, Route, Routes } from 'react-router'
 import './App.css'
 import ActiveTabSwitch from './components/ActiveTabSwitch'
 import ChatPage from './pages/ChatPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import UpdateProfile from './pages/UpdateProfile'
 import { useAuthStore } from './store/useAuthStore'
 import { useEffect } from 'react'
 import PageLoader from './components/PageLoader'
@@ -33,6 +33,7 @@ if(isCheckingAuth) return <PageLoader/>
        <Route path='/' element={authUser ? <ChatPage/> : <Navigate to={'/login'}/>}/>
        <Route path='/login' element={!authUser ? <LoginPage/> : <Navigate to={'/'}/>}/>
        <Route path='/signup' element={!authUser ? <SignupPage/> : <Navigate to={'/'}/>}/>
+       <Route path='/updateProfile' element={authUser ? <UpdateProfile/> : <Navigate to={'/login'}/>}/>
       </Routes>
 
       <Toaster/>

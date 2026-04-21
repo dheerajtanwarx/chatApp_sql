@@ -87,8 +87,10 @@ export const useChatStore = create((set, get)=>({
             message_type: messageData.file
               ? messageData.file.type.startsWith("image")
                 ? "image"
+                : messageData.file.type.startsWith("audio")
+                ? "audio"
                 : "document"
-              : "text",
+                : "text",
             createdAt: new Date().toISOString(),
             isOptimistic: true,
         };
@@ -106,6 +108,10 @@ export const useChatStore = create((set, get)=>({
             if (messageData.file) {
               formData.append("file", messageData.file);
             }
+
+
+           //audio file 
+
 
             const res = await axiosInstance.post(
               `/m/send/${selectedUser.id}`,

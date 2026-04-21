@@ -148,31 +148,32 @@ const updateUser = asyncHandler(async(req, res)=>{
   const profile_pic = req.file?.path
   const  userId  = req.user.id
 
-  console.log("profile pic", profile_pic)
+  // Fetch the existing user to fallback if fields are missing
+  const [existingUserRow] = await db.query("SELECT * FROM users WHERE id = ?", [userId])
+  const existingUser = existingUserRow[0]
+  if (!existingUser) {
+    throw new ApiError(404, "User not found")
+  }
 
-    // if(!profile_pic){
-    //   return res.status(400).json({message:"Profile pic is required"})
-    // }
+  let imageUrl = existingUser.profile_pic
 
-    let imageUrl = null
-
-    if(profile_pic){
+  if(profile_pic){
      try {
-  const uploadResponse = await cloudinary.uploader.upload(profile_pic)
-  console.log("Cloudinary success:", uploadResponse)
-  imageUrl = uploadResponse.secure_url
-} catch (err) {
-  console.log("Cloudinary error:", err)
-}
-    }
+       const uploadResponse = await cloudinary.uploader.upload(profile_pic)
+       console.log("Cloudinary success:", uploadResponse)
+       // Update imageUrl with the newly uploaded image
+       imageUrl = uploadResponse.secure_url
+     } catch (err) {
+       console.log("Cloudinary error:", err)
+     }
+  }
 
-    
-
-    console.log("Upload res: ", imageUrl)
+  const finalEmail = email || existingUser.email;
+  const finalUsername = username || existingUser.username;
 
   await db.query(
     "UPDATE users SET email = ?, username = ?, profile_pic = ? WHERE id = ?",
-    [email, username, imageUrl, userId]
+    [finalEmail, finalUsername, imageUrl, userId]
   )
 
   const [rows] = await db.query(
@@ -181,8 +182,6 @@ const updateUser = asyncHandler(async(req, res)=>{
   )
 
   const updatedUser = rows[0]
-
-  console.log("Updated user:", updatedUser)
 
   res.status(200).json(
     new ApiResponse(200, updatedUser, "user updated successfully")

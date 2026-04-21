@@ -88,6 +88,16 @@ if (!authUser) return null; // jab tak login user nahi aata → kuch render mat 
                     </a>
                   )}
 
+                {/* Audio */}
+{fileUrl &&
+  (messageType === "audio" ||
+    fileUrl.match(/\.(mp3|wav|webm|ogg)$/i)) && (
+    <audio controls className="mt-2 max-w-[250px]">
+      <source src={fileUrl} />
+      Your browser does not support audio
+    </audio>
+)}  
+
                   {/* Text */}
                   {(msg.message_text ?? msg.text) && (
                     <p className="mt-2">{msg.message_text ?? msg.text}</p>

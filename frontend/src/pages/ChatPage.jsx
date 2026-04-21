@@ -5,6 +5,7 @@ import ChatList from "../components/ChatList.jsx";
 import ContactList from "../components/ContactList.jsx";
 import NoConversationPlaceholder from "../components/NoConversationPlaceholder.jsx";
 import ProfileHeader from "../components/ProfileHeader.jsx";
+import { useCallSocket } from "../hooks/useCallSocket.js";
 import { useChatStore } from "../store/useChatStore.js";
 
 
@@ -12,6 +13,7 @@ import { useChatStore } from "../store/useChatStore.js";
 function ChatPage() {
   const { activeTab, selectedUser } = useChatStore();
 
+  useCallSocket();
   return (
     <div className="relative w-full max-w-6xl h-[800px]">
       <AnimatedGradientBorder>
