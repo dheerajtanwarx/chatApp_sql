@@ -13,7 +13,7 @@ import { useChatStore } from "../store/useChatStore.js";
 function ChatPage() {
   const { activeTab, selectedUser } = useChatStore();
 
-  useCallSocket();
+  // useCallSocket();
   return (
     <div className="relative w-full max-w-6xl h-[800px]">
       <AnimatedGradientBorder>

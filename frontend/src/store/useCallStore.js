@@ -1,13 +1,15 @@
-export const useCallStore = create((set, get)=>({
+// import { create } from "zustand";
 
-    incomingCall:null,
-    callAccepted: false,
-     callEnded: false,
-     stream: null,
-     peer: null,
+// export const useCallStore = create((set, get)=>({
 
-     setIncomingCall: (data)=>set({
-     incomingCall: data
-     }),
+//     incomingCall:null,
+//     callAccepted: false,
+//      callEnded: false,
+//      stream: null,
+//      peer: null,
 
-}))
+//      setIncomingCall: (data)=>set({
+//      incomingCall: data
+//      }),
+
+// }))
