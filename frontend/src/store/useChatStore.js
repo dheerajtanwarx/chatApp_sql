@@ -3,6 +3,7 @@ import { axiosInstance } from "../lib/axios"
 import { useAuthStore } from "./useAuthStore"
 import { create } from "zustand"
 
+
 export const useChatStore = create((set, get)=>({
     //list of all users
     allContacts: [],
@@ -130,6 +131,72 @@ export const useChatStore = create((set, get)=>({
               messages: state.messages.filter((msg) => msg.id !== tempId),
             }));
             toast.error(error.response?.data?.message || "Something went wrong")
+        }
+    },
+
+    sendMessageToAI: async (messageData) => {
+        const { authUser } = useAuthStore.getState();
+
+        const tempId = `temp-${Date.now()}`;
+
+        // optimistic user message
+        const optimisticMessage = {
+            id: tempId,
+            sender_id: authUser.id,
+            message_text: messageData.message_text || "",
+            file_url: messageData.file ? URL.createObjectURL(messageData.file) : null,
+            message_type: messageData.file
+              ? messageData.file.type.startsWith("image")
+                ? "image"
+                : messageData.file.type.startsWith("audio")
+                ? "audio"
+                : "document"
+              : "text",
+            createdAt: new Date().toISOString(),
+            isOptimistic: true,
+        };
+
+        set((state) => ({
+            messages: [...state.messages, optimisticMessage],
+        }));
+
+        try {
+            const formData = new FormData();
+            if (messageData.message_text) {
+                formData.append("message_text", messageData.message_text);
+            }
+            if (messageData.file) {
+                formData.append("file", messageData.file);
+            }
+
+            const res = await axiosInstance.post(
+                `/ai/chat`,
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
+            );
+
+            // add AI reply as a new message
+            const aiReply = {
+                id: `ai-${Date.now()}`,
+                sender_id: "ai",
+                message_text: res.data.data,
+                message_type: "text",
+                createdAt: new Date().toISOString(),
+            };
+
+            set((state) => ({
+                messages: [...state.messages, aiReply],
+            }));
+        } catch (error) {
+            // remove optimistic message on failure
+            set((state) => ({
+                messages: state.messages.filter((msg) => msg.id !== tempId),
+            }));
+            toast.error(error.response?.data?.message || "Something went wrong");
         }
     },
 

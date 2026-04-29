@@ -7,6 +7,7 @@ import { userRouter } from "../routes/user.route.js";
 import { messageRouter } from "../routes/message.route.js";
 import { conversationRouter } from "../routes/conversation.route.js";
 import { app, server } from "../lib/socket.js";
+import { aiRouter } from "../routes/ai.js";
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ connectDB();
 app.use("/api/u", userRouter);
 app.use("/api/c", conversationRouter);
 app.use("/api/m", messageRouter);
+app.use("/api/ai", aiRouter);
 
 // Use server.listen for Socket.io
 const PORT = process.env.PORT || 5001;

@@ -4,7 +4,7 @@ import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import NoChatHistoryPlaceholder from "./NoChatHistoryPlaceholder.jsx";
 import MessageInput from "./MessageInput";
-
+import AIMessageBubble from "./AIMessageBubble";
 import MessageLoadingSkeleton from "./MessageLoadingSkeleton.jsx";
 
 function ChatContainer() {
@@ -50,11 +50,22 @@ if (!authUser) return null; // jab tak login user nahi aata → kuch render mat 
         {messages.length > 0 && !isMessagesLoading ? (
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.map((msg) => {
-              console.log("MSG DEBUG:", msg);
               const messageType = msg.message_type || msg.messageType;
               const fileUrl = msg.file_url || msg.fileUrl;
               const createdTime = msg.created_at || msg.createdAt;
               const senderId = msg.sender_id ?? msg.senderId;
+
+              // AI reply → use dedicated styled bubble
+              if (senderId === "ai") {
+                return (
+                  <AIMessageBubble
+                    key={msg.id}
+                    text={msg.message_text ?? msg.text}
+                    time={createdTime}
+                  />
+                );
+              }
+
               return (
               <div
                 key={msg.id}
@@ -67,7 +78,7 @@ if (!authUser) return null; // jab tak login user nahi aata → kuch render mat 
                       : "bg-slate-800 text-slate-200"
                   }`}
                 >
-                  {/* Image (fallback if type missing but URL exists) */}
+                  {/* Image */}
                   {fileUrl && (messageType === "image" || fileUrl.match(/\.(jpeg|jpg|png|webp|gif)$/i)) && (
                     <img
                       src={fileUrl}
@@ -88,15 +99,15 @@ if (!authUser) return null; // jab tak login user nahi aata → kuch render mat 
                     </a>
                   )}
 
-                {/* Audio */}
-{fileUrl &&
-  (messageType === "audio" ||
-    fileUrl.match(/\.(mp3|wav|webm|ogg)$/i)) && (
-    <audio controls className="mt-2 max-w-[250px]">
-      <source src={fileUrl} />
-      Your browser does not support audio
-    </audio>
-)}  
+                  {/* Audio */}
+                  {fileUrl &&
+                    (messageType === "audio" ||
+                      fileUrl.match(/\.(mp3|wav|webm|ogg)$/i)) && (
+                      <audio controls className="mt-2 max-w-[250px]">
+                        <source src={fileUrl} />
+                        Your browser does not support audio
+                      </audio>
+                  )}
 
                   {/* Text */}
                   {(msg.message_text ?? msg.text) && (

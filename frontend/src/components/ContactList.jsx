@@ -29,7 +29,7 @@ function ContactList() {
             </div>
             <h4 className="text-slate-200 font-medium">{contact.username}</h4>
           </div>
-         </div>
+        </div>
       ))}
     </>
   );

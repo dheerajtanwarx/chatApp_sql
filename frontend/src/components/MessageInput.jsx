@@ -5,11 +5,11 @@ import toast from "react-hot-toast";
 import { ImageIcon, SendIcon, XIcon } from "lucide-react";
 
 function MessageInput() {
-  
+
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [file, setFile] = useState(null);
- 
+
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
@@ -17,17 +17,26 @@ function MessageInput() {
 
   const fileInputRef = useRef(null);
 
-  const { sendMessage } = useChatStore();
+  const { sendMessage, sendMessageToAI, selectedUser } = useChatStore();
+
+  const isAIChat = selectedUser?.id === "ai";
 
   const handleSendMessage = (e) => {
     e.preventDefault();
     if (!text.trim() && !imagePreview && !audioPreview) return;
-    
 
-    sendMessage({
-      message_text: text.trim(),
-      file: file,
-    });
+    if (isAIChat) {
+      sendMessageToAI({
+        message_text: text.trim(),
+        file: file,
+      });
+    } else {
+      sendMessage({
+        message_text: text.trim(),
+        file: file,
+      });
+    }
+
     setText("");
     setImagePreview(null);
     setFile(null);
@@ -136,7 +145,7 @@ function MessageInput() {
           value={text}
           onChange={(e) => {
             setText(e.target.value);
-           
+
           }}
           className="flex-1 bg-slate-800/50 border border-slate-700/50 rounded-lg py-2 px-4"
           placeholder="Type your message..."
@@ -153,15 +162,14 @@ function MessageInput() {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`bg-slate-800/50 text-slate-400 hover:text-slate-200 rounded-lg px-4 transition-colors ${
-            imagePreview ? "text-cyan-500" : ""
-          }`}
+          className={`bg-slate-800/50 text-slate-400 hover:text-slate-200 rounded-lg px-4 transition-colors ${imagePreview ? "text-cyan-500" : ""
+            }`}
         >
           <ImageIcon className="w-5 h-5" />
         </button>
 
-       <button type="button" onClick={startRecording}>🎤 Start</button>
-      <button type="button" onClick={stopRecording}>⏹ Stop</button>
+        <button type="button" onClick={startRecording}>🎤 Start</button>
+        <button type="button" onClick={stopRecording}>⏹ Stop</button>
 
         <button
           type="submit"
