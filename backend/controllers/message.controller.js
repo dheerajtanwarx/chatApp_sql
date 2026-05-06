@@ -111,8 +111,14 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
 export const getMessagesByConversationId = asyncHandler(async (req, res) => {
     try {
+
         const { id: otherUserId } = req.params
         const senderId = req.user.id
+        const {page = 1, limit=10, query, sortBy="createdAt", sortType="desc"} = req.query
+
+        const pageNumber = Number(page)
+        const limitNumber = Number(limit)
+        const skip = (pageNumber - 1 ) * limitNumber
 
         const [conversation] = await db.query(
             // "SELECT id FROM conversations WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)", 
