@@ -3,6 +3,7 @@ import http from "http";
 import express from "express";
 import dotenv from 'dotenv'
 import { socketAuthMiddleware } from "../middlewares/socket.auth.middleware.js";
+import { allowedOrigins } from "../config/cors.js";
 dotenv.config()
 
 
@@ -11,7 +12,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: [process.env.CLIENT_URL],
+    origin: allowedOrigins,
     credentials: true,
   },
 });

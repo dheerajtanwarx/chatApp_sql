@@ -11,6 +11,13 @@ import { ApiResponse } from "../utils/ApiResponse.js"
 import cloudinary from "../lib/cloudinary.js"
 dotenv.config()
 
+const authCookieOptions = {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+}
+
 const generateAccessTokenAndRefreshToken = async (userId) => {
     try {
         const [data] = await db.query(
@@ -70,12 +77,7 @@ const registerUser = asyncHandler(async(req, res)=>{
 
     const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(userId)
 
-    res.cookie("jwt", accessToken, {
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        httpOnly: true,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV !== "development",
-    })
+    res.cookie("jwt", accessToken, authCookieOptions)
 
     return res.status(201).json(new ApiResponse(
         200, createdUser[0], "User registered successfully"
@@ -116,12 +118,7 @@ const loginUser = asyncHandler(async(req, res)=>{
         const userId = user.id
         const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(userId)
 
-        res.cookie("jwt", accessToken, {
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV !== "development",
-        })
+        res.cookie("jwt", accessToken, authCookieOptions)
 
         const [loggedInUserRow] = await db.query("SELECT id, username, email, profile_pic, created_at FROM users WHERE id = ?", [userId])
         const loggedInUser = loggedInUserRow[0]
@@ -197,7 +194,7 @@ const updateUser = asyncHandler(async(req, res)=>{
 
 
 const logout = (_, res)=>{
-    res.cookie("jwt", "", {maxAge:0})
+    res.cookie("jwt", "", { ...authCookieOptions, maxAge: 0 })
     res.status(200).json({
         message:"logout successfully"
     })

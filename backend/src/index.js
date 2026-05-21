@@ -8,18 +8,14 @@ import { messageRouter } from "../routes/message.route.js";
 import { conversationRouter } from "../routes/conversation.route.js";
 import { app, server } from "../lib/socket.js";
 import { aiRouter } from "../routes/ai.js";
+import { corsOptions } from "../config/cors.js";
 
 dotenv.config();
 
 // Middlewares
 app.use(express.json());
 app.use(cookieParser());
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 
 async function connectDB() {
   try {
